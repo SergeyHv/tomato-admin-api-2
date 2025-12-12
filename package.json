@@ -1,5 +1,8 @@
 {
-  "name": "tomato-admin-api",
+  "name": "tomato-admin-api-2",
   "version": "1.0.0",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "googleapis": "^131.0.0"
+  }
 }
