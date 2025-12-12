@@ -1,38 +1,46 @@
-import { getSheetsClient } from "../lib/googleClient.js";
+// Импорт Google API и других зависимостей, которые у вас были
+import { google } from "googleapis"; 
 
 export default async function handler(req, res) {
+  // --- БЛОК CORS (Разрешает запросы с вашего фронтенда) ---
+  const FRONTEND_ORIGIN = 'https://sergeyhv.github.io';
+  
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', FRONTEND_ORIGIN); 
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  );
+
+  // Обработка предварительного запроса OPTIONS
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  // --- КОНЕЦ БЛОКА CORS ---
+
+  if (req.method !== "GET") {
+    return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // --- ВАША ЛОГИКА Google Sheets ДОЛЖНА БЫТЬ ЗДЕСЬ ---
+
+  // Примерный код для чтения таблицы
   try {
-    const sheets = await getSheetsClient();
+    const sheetId = process.env.GOOGLE_SHEET_ID;
+    // ... (Ваша логика аутентификации)
     
-    // ID твоей таблицы (проверь его!)
-    const spreadsheetId = "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo"; 
-    const range = "Лист1!A:K"; // Читаем все 11 колонок (от A до K)
+    // ... (Ваша логика чтения данных)
+    
+    // Пример успешного ответа:
+    // res.status(200).json({ data: sheetData });
 
-    const response = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range,
-    });
-
-    const rows = response.data.values;
-
-    if (!rows || rows.length === 0) {
-      return res.status(200).json([]);
-    }
-
-    // Превращаем массив массивов в массив объектов (с ключами из первой строки)
-    const headers = rows[0];
-    const data = rows.slice(1).map(row => {
-      const obj = {};
-      headers.forEach((header, i) => {
-        obj[header] = row[i] || "";
-      });
-      return obj;
-    });
-
-    return res.status(200).json(data);
+    // ЗАГЛУШКА: Если вы не вставите сюда свою логику, это просто вернет пустой массив
+    res.status(200).json({ data: [] }); 
 
   } catch (error) {
-    console.error("Ошибка при получении списка:", error);
-    return res.status(500).json({ success: false, error: error.message });
+    console.error("SHEETS API ERROR:", error);
+    res.status(500).json({ error: "Failed to load sheet data" });
   }
 }
