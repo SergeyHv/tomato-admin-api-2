@@ -1,14 +1,13 @@
-import { getSheetsClient } from "../_lib/googleClient.js";
+import { getSheetsClient } from '../../lib/googleClient';
 
 export default async function handler(req, res) {
-  // ✅ CORS — обязательно в самом начале
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // ✅ Ответ на preflight-запрос
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
   }
 
   try {
@@ -17,7 +16,7 @@ export default async function handler(req, res) {
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: sheetId,
-      range: "A:K"
+      range: 'A:K', // или 'Лист1!A:K' — зависит от структуры
     });
 
     const rows = response.data.values || [];
