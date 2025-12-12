@@ -5,7 +5,7 @@ export default async function handler(req, res) {
     const sheets = await getSheetsClient();
     // Твой ID таблицы
     const spreadsheetId = "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo"; 
-    const range = "Лист1!A:K"; 
+    const range = "A:K"; 
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
