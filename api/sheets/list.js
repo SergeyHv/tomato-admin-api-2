@@ -1,4 +1,4 @@
-import { getSheetsClient } from '../../_lib/googleSheetsClient';
+import { getSheetsClient } from '../../_lib/googleClient';
 
 
 export default async function handler(req, res) {
