@@ -3,9 +3,10 @@ import { getSheetsClient } from "../lib/googleClient.js";
 export default async function handler(req, res) {
   try {
     const sheets = await getSheetsClient();
-    // Твой ID таблицы
     const spreadsheetId = "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo"; 
-    const range = "A:K"; 
+    
+    // ВАЖНО: Названия с пробелами пишутся в одинарных кавычках внутри строки
+    const range = "'_Tomato_Sait - Лист1'!A:K"; 
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -18,10 +19,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ items: [] });
     }
 
-    // Заголовки (первая строка)
     const headers = rows[0];
-    
-    // Превращаем строки в объекты
     const items = rows.slice(1).map(row => {
       let obj = {};
       headers.forEach((header, i) => {
@@ -30,11 +28,13 @@ export default async function handler(req, res) {
       return obj;
     });
 
-    // Возвращаем объект с ключом items (как ожидает твой фронтенд)
     return res.status(200).json({ items });
 
   } catch (error) {
     console.error("API Error:", error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ 
+      error: error.message, 
+      details: "Проверьте, что лист называется именно: _Tomato_Sait - Лист1" 
+    });
   }
 }
