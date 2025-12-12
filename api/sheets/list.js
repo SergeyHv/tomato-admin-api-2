@@ -1,3 +1,4 @@
+console.log("LIST FILE EXECUTED FROM:", __filename);
 import { getSheetsClient } from '../lib/googleClient';
 
 export default async function handler(req, res) {
