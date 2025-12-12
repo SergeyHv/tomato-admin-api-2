@@ -4,6 +4,6 @@
   "type": "module",
   "dependencies": {
     "googleapis": "^131.0.0",
-    "formidable": "^3.5.1"  <-- ЭТУ СТРОКУ НУЖНО ДОБАВИТЬ
+    "formidable": "^3.5.1"
   }
 }
