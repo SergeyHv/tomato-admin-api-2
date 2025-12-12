@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const token = process.env.GITHUB_TOKEN;
+  const token = process.env.GH_UPLOAD_TOKEN;
   if (!token) {
     return res.status(500).json({ error: "Missing GITHUB_TOKEN" });
   }
