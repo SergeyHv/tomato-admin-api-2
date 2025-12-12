@@ -1,9 +1,18 @@
 import { getSheetsClient } from "../_lib/googleClient.js";
 
 export default async function handler(req, res) {
+  // ✅ CORS — обязательно в самом начале
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // ✅ Ответ на preflight-запрос
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+
   try {
     const sheets = await getSheetsClient();
-
     const sheetId = process.env.GOOGLE_SHEET_ID;
 
     const response = await sheets.spreadsheets.values.get({
@@ -12,7 +21,6 @@ export default async function handler(req, res) {
     });
 
     const rows = response.data.values || [];
-
     const [header, ...data] = rows;
 
     const items = data.map((row) => {
@@ -29,4 +37,3 @@ export default async function handler(req, res) {
     res.status(500).json({ error: "Failed to load data" });
   }
 }
-
