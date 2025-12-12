@@ -8,12 +8,32 @@ export const config = {
   }
 };
 
-// Константы для пути к репозиторию (Проверьте, что они ТОЧНЫЕ!)
+// --- КОНСТАНТЫ РЕПОЗИТОРИЯ (ПРОВЕРЬТЕ ТОЧНОСТЬ РЕГИСТРА!) ---
 const GITHUB_OWNER = 'SergeyHv'; 
 const GITHUB_REPO = 'tomato';
 const GITHUB_BRANCH = 'main';
+// --- КОНЕЦ КОНСТАНТ ---
 
 export default async function handler(req, res) {
+  // --- БЛОК CORS (Разрешает запросы с вашего фронтенда) ---
+  const FRONTEND_ORIGIN = 'https://sergeyhv.github.io';
+  
+  res.setHeader('Access-Control-Allow-Credentials', true);
+  res.setHeader('Access-Control-Allow-Origin', FRONTEND_ORIGIN); 
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
+  );
+
+  // Обработка предварительного запроса OPTIONS (Обязательно для CORS)
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  // --- КОНЕЦ БЛОКА CORS ---
+
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -21,18 +41,17 @@ export default async function handler(req, res) {
   // 1. Проверка токена
   const token = process.env.GH_UPLOAD_TOKEN;
   if (!token) {
-    // В отличие от старого кода, здесь точное имя токена
     console.error("CRITICAL ERROR: Missing GH_UPLOAD_TOKEN environment variable.");
     return res.status(500).json({ error: "Missing GH_UPLOAD_TOKEN" });
   }
   
-  // Добавляем отладочное сообщение
   console.log("DEBUG: Token is present. Starting form parsing."); 
 
   // 2. Парсинг входящего файла с помощью Formidable
   const form = new IncomingForm();
 
-  return new Promise((resolve, reject) => {
+  // Мы оборачиваем form.parse в Promise для лучшей асинхронной обработки
+  return new Promise((resolve) => {
     form.parse(req, async (err, fields, files) => {
       if (err) {
         console.error("FORM PARSE ERROR:", err);
@@ -56,7 +75,7 @@ export default async function handler(req, res) {
         const buffer = fs.readFileSync(tempPath);
         const base64 = buffer.toString("base64");
         
-        // Удаление временного файла (важно для Vercel)
+        // Удаление временного файла
         fs.unlinkSync(tempPath);
 
         // 3. Подготовка к загрузке на GitHub
@@ -71,22 +90,19 @@ export default async function handler(req, res) {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            // Использование 'Bearer' для лучшей совместимости
             "Authorization": `Bearer ${token}`, 
             "User-Agent": "tomato-admin-api"
           },
           body: JSON.stringify({
             message: "Upload image from admin",
             content: base64,
-            // Явное указание ветки, чтобы избежать ошибок
-            branch: GITHUB_BRANCH 
+            branch: GITHUB_BRANCH // Явное указание ветки
           })
         });
 
         const githubData = await githubRes.json();
 
         if (!githubRes.ok) {
-          // Если GitHub возвращает ошибку (например, 404 Not Found или 401 Unauthorized)
           console.error("GITHUB UPLOAD FAILED:", githubRes.status, githubData.message || githubData);
           res.status(500).json({ 
             error: "GitHub upload failed",
