@@ -1,9 +1,27 @@
 {
+  "functions": {
+    "api/**/*.cjs": {
+      "memory": 1024,
+      "maxDuration": 5
+    }
+  },
+  "build": {
+    "includeFiles": [
+      "api/lib/**"  // ЯВНО ВКЛЮЧАЕМ ВСЮ ПАПКУ LIB
+    ]
+  },
   "rewrites": [
+    // Явно маршрутизируем конкретный путь (list)
+    {
+      "source": "/api/sheets/list", 
+      "destination": "/api/sheets/list.cjs"
+    },
+    // Оставляем общий шаблон для остальных файлов в sheets
     {
       "source": "/api/sheets/:path",
       "destination": "/api/sheets/:path.cjs"
     },
+    // Оставляем общий шаблон для файлов в корне api
     {
       "source": "/api/:path",
       "destination": "/api/:path.cjs"
