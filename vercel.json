@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/api/:name",
-      "destination": "/api/:name.cjs"
+      "source": "/api/sheets/:name",
+      "destination": "/api/sheets/:name.cjs"
     }
   ],
   "headers": [
@@ -23,7 +23,7 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
+          "value": "Content-Type, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version"
         }
       ]
     }
