@@ -2,7 +2,7 @@
 // Файл: api/sheets/list.js (ФИНАЛЬНЫЙ CJS С ГАРАНТИРОВАННЫМ CORS И ДЕТАЛЯМИ ОШИБКИ)
 // ===================================================================
 
-const { getSheetsClient } = require("../lib/googleClient"); 
+const { getSheetsClient } = require("../lib/googleClient.cjs");
 
 module.exports = async (req, res) => {
     
