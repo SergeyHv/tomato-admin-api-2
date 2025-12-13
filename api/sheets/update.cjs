@@ -3,7 +3,7 @@
 // ===================================================================
 
 // Используем require вместо import
-const { getSheetsClient } = require("../lib/googleClient"); 
+const { getSheetsClient } = require("../lib/googleClient.cjs");
 
 module.exports = async (req, res) => {
     
