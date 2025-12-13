@@ -4,6 +4,11 @@
       "api/lib/**"
     ]
   },
+  "rewrites": [
+    { "source": "/api/sheets/list", "destination": "/api/sheets/list.cjs" },
+    { "source": "/api/sheets/:path", "destination": "/api/sheets/:path.cjs" },
+    { "source": "/api/:path", "destination": "/api/:path.cjs" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
