@@ -4,7 +4,7 @@
 
 import { getSheetsClient } from "../lib/googleClient"; // Убрали .js
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
     
     // --- 1. Настройка CORS-заголовков ---
     // Разрешаем запросы с вашего фронтенда
