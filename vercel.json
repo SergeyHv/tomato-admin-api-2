@@ -1,17 +1,4 @@
 {
-  "functions": {
-    // Явно указываем Vercel, что эти файлы являются источниками функций.
-    "api/**/*.cjs": { 
-      "memory": 1024,
-      "maxDuration": 5,
-      "src": "api/**/*.cjs" // КРИТИЧЕСКИ ВАЖНО: Явное указание источника
-    }
-  },
-  "build": {
-    "includeFiles": [
-      "api/lib/*.cjs" 
-    ]
-  },
   "rewrites": [
     {
       "source": "/api/sheets/:path",
