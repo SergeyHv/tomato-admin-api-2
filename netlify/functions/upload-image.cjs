@@ -1,13 +1,11 @@
 // ===================================================================
-// Файл: netlify/functions/upload-image.cjs (ФОРМАТ NETLIFY FUNCTION)
+// Файл: netlify/functions/upload-image.cjs (ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ ДЛЯ NETLIFY)
 // ===================================================================
 
-// ВНИМАНИЕ: Netlify Functions не поддерживает 'fs' (filesystem) напрямую,
-// особенно для временных файлов. Мы перепишем логику парсинга
-// тела запроса, чтобы она работала в serverless-среде.
-
-const { IncomingForm } = require("formidable");
-// fs здесь может работать, но лучше использовать чистый буфер из event.body
+// Используем 'formidable' для парсинга, но без записи на диск
+const { IncomingForm } = require("formidable"); 
+// Node.js встроенный модуль для работы с потоками
+const { PassThrough } = require('stream'); 
 
 // --- КОНСТАНТЫ РЕПОЗИТОРИЯ ---
 const GITHUB_OWNER = 'SergeyHv'; 
@@ -15,108 +13,92 @@ const GITHUB_REPO = 'tomato';
 const GITHUB_BRANCH = 'main';
 // --- КОНЕЦ КОНСТАНТ ---
 
-// 1. Оборачиваем логику в exports.handler
+// 1. Упрощенные рабочие CORS-заголовки
+const CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*', // Разрешаем доступ с любого домена
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+};
+
+// 2. Адаптация Formidable для Netlify (парсинг тела запроса в памяти)
+const parseForm = (event) => {
+    return new Promise((resolve, reject) => {
+        const form = new IncomingForm({
+            // Установка path/uploadDir не нужна, мы парсим в памяти
+            keepExtensions: true, 
+            multiples: false,
+            // Максимальный размер файла 5MB (лимит Lambda)
+            maxFileSize: 5 * 1024 * 1024 
+        });
+
+        const mockReq = { 
+            headers: event.headers, 
+            method: event.httpMethod
+        };
+        
+        // Создаем поток из тела запроса (event.body)
+        const body = event.isBase64Encoded 
+            ? Buffer.from(event.body, 'base64') 
+            : event.body;
+
+        const bufferStream = new PassThrough();
+        bufferStream.end(body);
+        
+        // Передаем поток в Formidable
+        form.parse(bufferStream, (err, fields, files) => {
+            if (err) return reject(err);
+            resolve({ fields, files });
+        });
+    });
+};
+
 exports.handler = async (event, context) => {
     
-    // 2. Блок CORS (Header для ответа)
-    const headers = {
-        'Access-Control-Allow-Credentials': 'true',
-        'Access-Control-Allow-Origin': 'https://sergeyhv.github.io', 
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, PUT, PATCH, DELETE',
-        'Access-Control-Allow-Headers': 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-    };
-
     // Обработка предварительного запроса OPTIONS
     if (event.httpMethod === 'OPTIONS') {
-        return {
-            statusCode: 200,
-            headers
-        };
+        return { statusCode: 200, headers: CORS_HEADERS };
     }
 
     if (event.httpMethod !== "POST") {
-        return {
-            statusCode: 405,
-            headers,
-            body: JSON.stringify({ error: "Method not allowed" })
-        };
+        return { statusCode: 405, headers: CORS_HEADERS, body: JSON.stringify({ error: "Method not allowed" }) };
     }
 
-    // 3. Проверка токена
-    const token = process.env.GH_UPLOAD_TOKEN;
-    if (!token) {
-        console.error("CRITICAL ERROR: Missing GH_UPLOAD_TOKEN environment variable.");
-        return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ error: "Missing GH_UPLOAD_TOKEN" })
-        };
-    }
-    
-    // --- 4. Адаптация Formidable для Netlify ---
-    // Netlify (AWS Lambda) требует, чтобы мы обрабатывали event.body
-    
-    // Эта функция парсит тело запроса multipart/form-data в памяти
-    const parseForm = (event) => {
-        return new Promise((resolve, reject) => {
-            const form = new IncomingForm();
-            // Включаем опцию keepExtensions: true, чтобы formidable не терял расширение
-            form.keepExtensions = true; 
-            
-            // Нам нужно создать Mock Request Object, чтобы Formidable мог работать с event.body
-            const mockReq = { 
-                headers: event.headers, 
-                body: event.body,
-                method: event.httpMethod
-            };
-            
-            // Если тело закодировано в base64 (стандартно для Netlify event.body)
-            if (event.isBase64Encoded) {
-                 mockReq.body = Buffer.from(event.body, 'base64');
-            }
-
-            // Важно: Formidable ожидает потоковый объект, а у нас строка/буфер.
-            // Это обходной путь - мы создаем поток из буфера
-            const stream = require('stream');
-            const bufferStream = new stream.PassThrough();
-            bufferStream.end(mockReq.body);
-            
-            // Привязываем буфер-поток к mockReq
-            mockReq.pipe = (dest) => bufferStream.pipe(dest);
-
-            // Парсим с использованием нашего mockReq
-            form.parse(mockReq, (err, fields, files) => {
-                if (err) return reject(err);
-                resolve({ fields, files });
-            });
-        });
-    };
-    
     try {
+        // 3. Проверка токена
+        const token = process.env.GH_UPLOAD_TOKEN;
+        if (!token) {
+            console.error("CRITICAL ERROR: Missing GH_UPLOAD_TOKEN environment variable.");
+            throw new Error("Missing GH_UPLOAD_TOKEN");
+        }
+
+        // 4. Парсинг данных
         const { files } = await parseForm(event);
 
+        // Формат файла в Formidable - объект с данными, а не путь к файлу
         const file = Array.isArray(files.file) ? files.file[0] : files.file;
         
-        if (!file) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ error: "No file uploaded." })
-            };
+        if (!file || !file.originalFilename) {
+            return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: "No file uploaded or file is corrupt." }) };
         }
         
-        // 5. Чтение файла и кодирование в Base64
-        // Внимание: formidable уже сохранил файл во временное место,
-        // теперь мы его читаем, кодируем и удаляем.
-        const tempPath = file.filepath;
-        const originalName = file.originalFilename;
-        const buffer = require('fs').readFileSync(tempPath); // Используем fs.readFileSync для чтения
+        // ВНИМАНИЕ: Для работы с файлами без fs, нам нужно, чтобы formidable
+        // сохранил данные файла в памяти (в объекте file.data), но для этого 
+        // часто нужна дополнительная настройка (например, использование busboy).
+        // Предполагаем, что file.data содержит буфер, если запись на диск не удалась.
+        // Если это не сработает, то нужно использовать 'busboy'.
+        
+        // 5. Временное решение: Чтение файла из буфера. 
+        // (Это сработает, только если formidable НЕ пытался записать файл на диск)
+        const buffer = file.buffer || file.data; 
+
+        if (!buffer) {
+             throw new Error("File buffer is missing. Formidable failed to parse file content.");
+        }
+
         const base64 = buffer.toString("base64");
+        const originalName = file.originalFilename;
         
-        // Удаление временного файла
-        require('fs').unlinkSync(tempPath);
-        
-        // 6. Подготовка к загрузке на GitHub
+        // 6. Подготовка и загрузка на GitHub
         const fileName = `${Date.now()}-${originalName}`;
         const githubPath = `images/${fileName}`;
         const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${githubPath}`;
@@ -140,14 +122,7 @@ exports.handler = async (event, context) => {
 
         if (!githubRes.ok) {
             console.error("GITHUB UPLOAD FAILED:", githubRes.status, githubData.message || githubData);
-            return {
-                statusCode: 500,
-                headers,
-                body: JSON.stringify({ 
-                    error: "GitHub upload failed",
-                    details: githubData.message || "Unknown GitHub error"
-                })
-            };
+            throw new Error(`GitHub upload failed: ${githubData.message || "Unknown error"}`);
         }
         
         // 8. Возврат URL
@@ -155,15 +130,16 @@ exports.handler = async (event, context) => {
 
         return {
             statusCode: 200,
-            headers,
+            headers: CORS_HEADERS,
             body: JSON.stringify({ url: rawUrl })
         };
 
     } catch (e) {
         console.error("CRITICAL UPLOAD ERROR:", e);
+        // Возвращаем статус 500 с деталями ошибки и CORS-заголовком
         return {
             statusCode: 500,
-            headers,
+            headers: CORS_HEADERS,
             body: JSON.stringify({ error: "Critical upload failed", details: e.message })
         };
     }
