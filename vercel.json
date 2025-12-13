@@ -1,8 +1,17 @@
 {
+  "functions": {
+    "api/sheets/*.cjs": {
+      "memory": 1024,
+      "maxDuration": 5,
+      "includeFiles": [
+        "api/lib/googleClient.cjs"
+      ]
+    }
+  },
   "rewrites": [
     {
-      "source": "/api/sheets/:name",
-      "destination": "/api/sheets/:name.cjs"
+      "source": "/api/sheets/:path",
+      "destination": "/api/sheets/:path.cjs"
     }
   ],
   "headers": [
