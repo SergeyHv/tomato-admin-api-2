@@ -1,64 +1,63 @@
-import { getSheetsClient } from "../lib/googleClient"; // Убрали .js
+// ===================================================================
+// Файл: api/sheets/list.js (ФИНАЛЬНЫЙ CJS ФОРМАТ VERCEL)
+// ===================================================================
 
-export default async function handler(req, res) {
-    // --- БЛОК CORS: НАЧАЛО (ОБЯЗАТЕЛЕН) ---
-    const FRONTEND_ORIGIN = 'https://sergeyhv.github.io';
+const { getSheetsClient } = require("../lib/googleClient"); 
+
+module.exports = async (req, res) => {
     
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    res.setHeader('Access-Control-Allow-Origin', FRONTEND_ORIGIN); 
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader(
-        'Access-Control-Allow-Headers',
-        'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-    );
+    // --- 1. Настройка CORS-заголовков ---
+    // Используем * для диагностики
+    res.setHeader('Access-Control-Allow-Origin', '*'); 
+    res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    // Обработка предварительного запроса OPTIONS (Обязательно для CORS)
+    // Обработка Preflight-запроса (OPTIONS), хотя GET его не требует, это хорошая практика
     if (req.method === 'OPTIONS') {
         res.status(200).end();
         return;
     }
-    // --- БЛОК CORS: КОНЕЦ ---
+    
+    if (req.method !== 'GET') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
 
-    // --- ВАША ЛОГИКА GOOGLE SHEETS: НАЧАЛО ---
     try {
-        if (req.method !== "GET") { // Дополнительная проверка на метод
-            return res.status(405).json({ error: "Method not allowed" });
-        }
-        
         const sheets = await getSheetsClient();
-        const spreadsheetId = "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo"; 
+        const spreadsheetId = "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo";
+        const sheetName = "_Tomato_Sait - Лист1"; 
         
-        // ВАЖНО: Названия с пробелами пишутся в одинарных кавычках внутри строки
-        const range = "'_Tomato_Sait - Лист1'!A:K"; 
-
+        // Чтение данных (от A до K, включая заголовки)
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId,
-            range,
+            range: `'${sheetName}'!A:K`, 
         });
 
-        const rows = response.data.values || [];
-
-        if (rows.length === 0) {
+        const rows = response.data.values;
+        if (!rows || rows.length === 0) {
             return res.status(200).json({ items: [] });
         }
 
-        const headers = rows[0];
-        const items = rows.slice(1).map(row => {
-            let obj = {};
-            headers.forEach((header, i) => {
-                obj[header] = row[i] || "";
+        // Первую строку (заголовки) используем как ключи
+        const headers = rows[0]; 
+        // Остальные строки - данные
+        const dataRows = rows.slice(1); 
+
+        // Маппинг (преобразование) массива данных в массив объектов
+        const items = dataRows.map(row => {
+            const item = {};
+            headers.forEach((header, index) => {
+                // Используем заголовок в качестве ключа (A, B, C...)
+                item[header] = row[index] || ""; 
             });
-            return obj;
+            return item;
         });
 
         return res.status(200).json({ items });
 
     } catch (error) {
-        console.error("API Error:", error);
-        return res.status(500).json({ 
-            error: error.message, 
-            details: "Проверьте, что лист называется именно: _Tomato_Sait - Лист1" 
-        });
+        console.error('Ошибка в list.js:', error);
+        // Возвращаем 500, чтобы показать, что это ошибка сервера
+        return res.status(500).json({ error: 'Server error fetching data: ' + error.message });
     }
-    // --- ВАША ЛОГИКА GOOGLE SHEETS: КОНЕЦ ---
-}
+};
