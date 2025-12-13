@@ -1,43 +1,70 @@
+// ===================================================================
+// Файл: api/sheets/update.js (ФИНАЛЬНО ИСПРАВЛЕННЫЙ КОД VERCEL)
+// ===================================================================
+
 import { getSheetsClient } from "../lib/googleClient.js";
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  try {
-    const sheets = await getSheetsClient();
-    const spreadsheetId = "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo";
-    const sheetName = "_Tomato_Sait - Лист1";
     
-    const { id, name, description, mainphoto, color, type, size, season, gallery_photos, origin, version } = req.body;
-
-    // 1. Получаем все ID из колонки A, чтобы найти нужную строку
-    const getRes = await sheets.spreadsheets.values.get({
-      spreadsheetId,
-      range: `'${sheetName}'!A:A`
-    });
-
-    const rows = getRes.data.values || [];
-    const rowIndex = rows.findIndex(row => row[0] === String(id));
-
-    if (rowIndex === -1) {
-      return res.status(404).json({ error: "Томат с таким ID не найден" });
+    // --- 1. Настройка CORS-заголовков ---
+    // Разрешаем запросы с вашего фронтенда
+    res.setHeader('Access-Control-Allow-Origin', 'https://sergeyhv.github.io');
+    // Разрешаем методы POST и OPTIONS
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    
+    // --- 2. Обработка Preflight-запроса (OPTIONS) ---
+    // Если метод OPTIONS, просто отправляем 200, подтверждая CORS-разрешение
+    if (req.method === 'OPTIONS') {
+        res.status(200).end();
+        return;
     }
 
-    // Номер строки (индекс + 1)
-    const rowNumber = rowIndex + 1;
+    // --- 3. Обработка основного запроса (POST) ---
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
 
-    // 2. Обновляем строку
-    await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range: `'${sheetName}'!A${rowNumber}:K${rowNumber}`,
-      valueInputOption: "USER_ENTERED",
-      requestBody: {
-        values: [[id, name, description, mainphoto, color, type, size, season, gallery_photos, origin, version]]
-      }
-    });
+    // --- Ваш оригинальный код обновления начинается здесь ---
+    try {
+        const sheets = await getSheetsClient();
+        const spreadsheetId = "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo";
+        const sheetName = "_Tomato_Sait - Лист1";
+    
+        const { id, name, description, mainphoto, color, type, size, season, gallery_photos, origin, version } = req.body;
 
-    return res.status(200).json({ success: true });
-  } catch (error) {
-    return res.status(500).json({ error: error.message });
-  }
+        // 1. Получаем все ID из колонки A, чтобы найти нужную строку
+        const getRes = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: `'${sheetName}'!A:A`
+        });
+
+        // Важно: row[0] === String(id) - правильный способ сравнения,
+        // так как ID в таблице могут быть строками.
+        const rows = getRes.data.values || [];
+        const rowIndex = rows.findIndex(row => row && row[0] === String(id));
+
+        if (rowIndex === -1) {
+            return res.status(404).json({ error: "Томат с таким ID не найден" });
+        }
+
+        // Номер строки (индекс + 1, так как в таблице нумерация с 1)
+        const rowNumber = rowIndex + 1;
+
+        // 2. Обновляем строку
+        await sheets.spreadsheets.values.update({
+            spreadsheetId,
+            // Обновляем всю строку от A до K
+            range: `'${sheetName}'!A${rowNumber}:K${rowNumber}`,
+            valueInputOption: "USER_ENTERED",
+            requestBody: {
+              values: [[id, name, description, mainphoto, color, type, size, season, gallery_photos, origin, version]]
+            }
+        });
+
+        return res.status(200).json({ success: true, updatedRow: rowNumber });
+    } catch (error) {
+        console.error("Ошибка при обновлении Google Sheets:", error);
+        return res.status(500).json({ error: error.message });
+    }
 }
