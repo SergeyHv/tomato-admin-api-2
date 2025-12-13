@@ -1,22 +1,27 @@
+# ===================================================================
 # netlify.toml - Основной файл конфигурации Netlify
+# ===================================================================
 
 [build]
   # Netlify будет искать код Serverless-функций в этой папке
   functions = "netlify/functions"
-  # Если у вас есть статический фронтенд в этом же репозитории, 
-  # укажите папку, которую нужно публиковать (например, "public" или "dist").
-  # Если фронтенд в другом месте (например, на GitHub Pages), можете оставить по умолчанию.
+  # Папка для публикации статических файлов (требуется для Netlify)
   publish = "public" 
 
 # Настройка Заголовков (CORS) для всех ваших функций
-# Это гарантирует, что браузеры разрешат вашему фронтенду обращаться к API
+# Упрощенная версия для корректной обработки OPTIONS-запросов
 [[headers]]
-  # Применяем эти заголовки ко всем функциям в Netlify
+  # Применяем эти заголовки ко всем функциям
   for = "/.netlify/functions/*" 
   [headers.values]
+    # Разрешаем доступ с любого домена (для вашего фронтенда на GitHub Pages)
     Access-Control-Allow-Origin = "*"
+    # Разрешаем все основные методы, включая OPTIONS (для Preflight request)
     Access-Control-Allow-Methods = "GET, POST, OPTIONS, PUT, PATCH, DELETE"
-    Access-Control-Allow-Headers = "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization"
+    # Разрешаем только самые необходимые заголовки (устраняет конфликты)
+    Access-Control-Allow-Headers = "Content-Type"
+    # Максимальное время кэширования для OPTIONS-ответа (ускоряет работу)
+    Access-Control-Max-Age = "86400"
 
 # Если вы хотите, чтобы ваш фронтенд использовал короткие пути типа /api/list,
 # а не длинные /.netlify/functions/list, используйте это перенаправление:
