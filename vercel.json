@@ -3,9 +3,7 @@
     "api/sheets/*.cjs": {
       "memory": 1024,
       "maxDuration": 5,
-      "includeFiles": [
-        "api/lib/googleClient.cjs"
-      ]
+      "includeFiles": "api/lib/googleClient.cjs" 
     }
   },
   "rewrites": [
