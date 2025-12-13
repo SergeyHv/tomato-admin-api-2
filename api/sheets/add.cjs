@@ -2,7 +2,7 @@
 // Файл: api/sheets/add.js (ФИНАЛЬНЫЙ ИСПРАВЛЕННЫЙ КОД VERCEL)
 // ===================================================================
 
-const { getSheetsClient } = require("../lib/googleClient"); 
+const { getSheetsClient } = require("../lib/googleClient.cjs");
 
 module.exports = async (req, res) => {
     
