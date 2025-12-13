@@ -1,37 +1,37 @@
 {
   "functions": {
-    "api/sheets/*.cjs": {
+    // 1. Широкий поиск: Искать CJS файлы в api/ и всех подпапках
+    "api/**/*.cjs": { 
       "memory": 1024,
-      "maxDuration": 5,
-      "includeFiles": "api/lib/googleClient.cjs" 
+      "maxDuration": 5
     }
+  },
+  "build": {
+    // 2. Гарантированное включение зависимостей: Включить все CJS файлы из api/lib/
+    "includeFiles": [
+      "api/lib/*.cjs" 
+    ]
   },
   "rewrites": [
     {
+      // 3. Маршрутизация для /api/sheets/ (list, add, update, delete)
       "source": "/api/sheets/:path",
       "destination": "/api/sheets/:path.cjs"
+    },
+    {
+      // 4. Маршрутизация для /api/ (upload-image)
+      "source": "/api/:path",
+      "destination": "/api/:path.cjs"
     }
   ],
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        {
-          "key": "Access-Control-Allow-Credentials",
-          "value": "true"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Access-Control-Allow-Methods",
-          "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT"
-        },
-        {
-          "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version"
-        }
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version" }
       ]
     }
   ]
