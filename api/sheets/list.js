@@ -1,4 +1,4 @@
-import { getSheetsClient } from "../lib/googleClient.js";
+import { getSheetsClient } from "../lib/googleClient"; // Убрали .js
 
 export default async function handler(req, res) {
     // --- БЛОК CORS: НАЧАЛО (ОБЯЗАТЕЛЕН) ---
