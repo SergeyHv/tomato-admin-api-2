@@ -1,25 +1,23 @@
 {
   "functions": {
-    // 1. Широкий поиск: Искать CJS файлы в api/ и всех подпапках
+    // Явно указываем Vercel, что эти файлы являются источниками функций.
     "api/**/*.cjs": { 
       "memory": 1024,
-      "maxDuration": 5
+      "maxDuration": 5,
+      "src": "api/**/*.cjs" // КРИТИЧЕСКИ ВАЖНО: Явное указание источника
     }
   },
   "build": {
-    // 2. Гарантированное включение зависимостей: Включить все CJS файлы из api/lib/
     "includeFiles": [
       "api/lib/*.cjs" 
     ]
   },
   "rewrites": [
     {
-      // 3. Маршрутизация для /api/sheets/ (list, add, update, delete)
       "source": "/api/sheets/:path",
       "destination": "/api/sheets/:path.cjs"
     },
     {
-      // 4. Маршрутизация для /api/ (upload-image)
       "source": "/api/:path",
       "destination": "/api/:path.cjs"
     }
