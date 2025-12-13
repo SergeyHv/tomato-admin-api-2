@@ -2,7 +2,7 @@
 // Файл: api/sheets/add.js (ФИНАЛЬНЫЙ ИСПРАВЛЕННЫЙ КОД VERCEL)
 // ===================================================================
 
-import { getSheetsClient } from "../lib/googleClient.js";
+import { getSheetsClient } from "../lib/googleClient"; // Убрали .js
 
 export default async function handler(req, res) {
     
