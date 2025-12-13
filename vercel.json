@@ -1,34 +1,18 @@
-version: 14
-Ex.js:3751 before all_funcdisable
-Ex.js:3754 0
-Ex.js:3762 all_funcdisable
-FingerPrint.js:19 has get the FIngerPrintSwitch
-FingerPrint.js:20 true
-FingerPrint.js:24 ['']
-Test.js:91 this page inject_canvas
-Test.js:214 audio start
-Test.js:218 audio buffer and Context
-Test.js:341 start webgl
-Test.js:344 webgl buffer
-main.js:11 --- 🚀 АДМИНКА: СТАРТ ---
-main.js:15 Инициализация Upload...
-main.js:25 Инициализация Form...
-main.js:29 Привязка кнопки Добавить...
-main.js:36 Кнопка 'Добавить новый сорт' привязана.
-main.js:42 Загружаем список из Google Таблиц...
-api.js:11  GET https://tomato-admin-api-2.vercel.app/api/sheets/list 404 (Not Found)
-listItems @ api.js:11
-start @ main.js:43
-(anonymous) @ main.js:73
-main.js:57 Критическая ошибка при запуске: Error: Ошибка при загрузке списка (404): The page could not be found NOT_FOUND iad1::tpk5n-1765663939074-15fc0475fd30 ...
-    at listItems (api.js:17:11)
-    at async start (main.js:43:22)
-start @ main.js:57
-await in start
-(anonymous) @ main.js:73
-Ex.js:3766 start protect
-Ex.js:3790 testlog type:1
-Ex.js:3766 start protect
-Ex.js:3790 testlog type:1
-admin/:1 Unchecked runtime.lastError: The message port closed before a response was received.
-favicon.ico:1  GET https://sergeyhv.github.io/favicon.ico 404 (Not Found)
+{
+  "build": {
+    "includeFiles": [
+      "api/lib/**"
+    ]
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Credentials", "value": "true" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version" }
+      ]
+    }
+  ]
+}
