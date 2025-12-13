@@ -1,11 +1,21 @@
 {
-  "name": "tomato-admin-api-2",
+  "name": "netlify-api-backend",
   "version": "1.0.0",
-  "type": "module",
-  "main": "api/sheets/list.cjs",  <--- НОВОЕ: Принудительно указываем Vercel на точку входа
+  "description": "Dependencies for Netlify Functions",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
   "dependencies": {
-    "googleapis": "^131.0.0",
+    "googleapis": "^129.0.0",
     "formidable": "^3.5.1",
     "node-fetch": "^3.3.2"
-  }
+  },
+  "keywords": [
+    "netlify",
+    "functions",
+    "google-sheets"
+  ],
+  "author": "",
+  "license": "ISC"
 }
