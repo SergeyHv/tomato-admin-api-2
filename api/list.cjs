@@ -1,35 +1,34 @@
 // ===================================================================
-// Файл: netlify/functions/list.cjs (ФОРМАТ NETLIFY FUNCTION)
+// Файл: api/list.cjs (ФОРМАТ VERCEL FUNCTION)
 // ===================================================================
 
-// 1. Изменяем путь к googleClient, т.к. он теперь в той же папке
-const { getSheetsClient } = require("./googleClient.cjs"); 
+const { getSheetsClient } = require("./googleClient.cjs");
 const { google } = require('googleapis');
 
-// --- 2. Оборачиваем логику в exports.handler ---
-exports.handler = async (event, context) => {
-    
+// Vercel требует, чтобы основной экспорт был функцией-обработчиком (req, res)
+module.exports = async (req, res) => {
+
+    // --- Настройка CORS ---
+    // Используем методы res.setHeader(), чтобы установить заголовки
+    res.setHeader('Access-Control-Allow-Origin', '*'); 
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
     // --- Обработка CORS Preflight (OPTIONS) ---
-    // Netlify обрабатывает CORS через netlify.toml, но для надежности можно оставить
-    if (event.httpMethod === 'OPTIONS') {
-        return { 
-            statusCode: 200, 
-            headers: { 'Access-Control-Allow-Origin': '*' },
-            body: JSON.stringify({ status: 'ok', message: 'Preflight check success' })
-        };
+    if (req.method === 'OPTIONS') {
+        return res.status(200).send('ok');
     }
     
-    if (event.httpMethod !== 'GET') {
-        return {
-            statusCode: 405,
-            body: JSON.stringify({ error: 'Method not allowed' })
-        };
+    // --- Проверка метода ---
+    if (req.method !== 'GET') {
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
     try {
         const sheets = await getSheetsClient();
         
-        const spreadsheetId = "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo";
+        // Используем ваши исходные данные
+        const spreadsheetId = process.env.SPREADSHEET_ID || "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo";
         const sheetName = "_Tomato_Sait - Лист1";
         
         const response = await sheets.spreadsheets.values.get({
@@ -39,11 +38,8 @@ exports.handler = async (event, context) => {
 
         const rows = response.data.values;
         if (!rows || rows.length === 0) {
-            return {
-                statusCode: 200,
-                headers: { 'Access-Control-Allow-Origin': '*' },
-                body: JSON.stringify({ items: [] })
-            };
+            // Отправляем пустой массив
+            return res.status(200).json({ items: [] });
         }
 
         const headers = rows[0];
@@ -52,28 +48,23 @@ exports.handler = async (event, context) => {
         const items = dataRows.map(row => {
             const item = {};
             headers.forEach((header, index) => {
-                item[header] = row[index] !== undefined ? row[index] : "";
+                // Преобразуем заголовки в camelCase (для удобства)
+                const safeHeader = header.toLowerCase().replace(/[^a-z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+                item[safeHeader] = row[index] !== undefined ? row[index] : "";
             });
             return item;
         });
 
-        // 3. Возвращаем ответ в формате Netlify (объект с statusCode, headers и body)
-        return {
-            statusCode: 200,
-            headers: { 'Access-Control-Allow-Origin': '*' },
-            body: JSON.stringify({ items })
-        };
+        // Отправляем JSON-ответ Vercel
+        return res.status(200).json({ items });
 
     } catch (error) {
-        console.error('Критическая ошибка Netlify API (list.cjs):', error);
+        console.error('Критическая ошибка Vercel API (list.cjs):', error);
         
-        return {
-            statusCode: 500,
-            headers: { 'Access-Control-Allow-Origin': '*' },
-            body: JSON.stringify({
-                error: 'Server error fetching data',
-                details: error.message
-            })
-        };
+        // Отправляем JSON-ответ Vercel с ошибкой
+        return res.status(500).json({
+            error: 'Server error fetching data',
+            details: error.message
+        });
     }
 };
