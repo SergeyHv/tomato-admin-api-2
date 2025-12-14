@@ -1,19 +1,10 @@
 {
-  // 1. УДАЛЯЕМ БЛОК "build"
-  // 2. УДАЛЯЕМ ВСЕ REWRITES: Vercel автоматически перенаправит /api/list на api/list.cjs
-
-  // Устанавливаем CORS-заголовки для всех API-запросов
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        // Это нам нужно для работы из браузера с фронтенда
         { "key": "Access-Control-Allow-Origin", "value": "*" }, 
-        
-        // Методы, которые мы используем (GET, POST)
         { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" }, 
-        
-        // Основные заголовки
         { "key": "Access-Control-Allow-Headers", "value": "Content-Type" } 
       ]
     }
