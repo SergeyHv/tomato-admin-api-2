@@ -1,5 +1,5 @@
 // ===================================================================
-// Файл: netlify/functions/googleClient.cjs (ВЕРСИЯ 3: САМАЯ НАДЕЖНАЯ)
+// Файл: api/googleClient.cjs (ФИНАЛЬНАЯ ВЕРСИЯ VERCEL)
 // ===================================================================
 
 const { google } = require('googleapis');
@@ -7,6 +7,7 @@ const { google } = require('googleapis');
 let sheetsClient = null;
 
 async function getSheetsClient() {
+    // Используем кэшированный клиент, если он уже инициализирован (холодный старт)
     if (sheetsClient) {
         return sheetsClient;
     }
@@ -15,16 +16,13 @@ async function getSheetsClient() {
         const credentialsString = process.env.GOOGLE_APPLICATION_CREDENTIALS;
         
         if (!credentialsString) {
-            throw new Error("GOOGLE_APPLICATION_CREDENTIALS environment variable is missing.");
+            // Исправленное сообщение об ошибке, указывающее на Vercel
+            throw new Error("GOOGLE_APPLICATION_CREDENTIALS environment variable is missing in Vercel settings.");
         }
 
-        // --- Используем общий метод Google Auth, который умеет работать с JSON-строкой ---
-        // Если переменная содержит JSON-объект, GoogleAuth автоматически его парсит
-        // и использует для авторизации Service Account.
-
+        // --- Парсинг JSON-строки для авторизации Service Account ---
+        // Vercel хранит секреты как строки, поэтому JSON.parse() необходим.
         const auth = new google.auth.GoogleAuth({
-            // Мы явно указываем, что credentials должны быть прочитаны из
-            // GOOGLE_APPLICATION_CREDENTIALS
             credentials: JSON.parse(credentialsString), 
             scopes: ['https://www.googleapis.com/auth/spreadsheets']
         });
@@ -38,9 +36,13 @@ async function getSheetsClient() {
         return sheetsClient;
 
     } catch (error) {
-        console.error("Ошибка инициализации Google Sheets (проверьте ключ):", error);
-        // Возвращаем более понятное сообщение
-        throw new Error("Failed to initialize Google Sheets Client. Please double-check your GOOGLE_APPLICATION_CREDENTIALS key format in Netlify.");
+        console.error("Ошибка инициализации Google Sheets (проверьте ключ Vercel):", error);
+        
+        // Исправленное сообщение об ошибке
+        const userFacingError = "Failed to initialize Google Sheets Client. Please double-check your GOOGLE_APPLICATION_CREDENTIALS key format in Vercel.";
+        
+        // Для Vercel мы используем throw, чтобы ошибка отобразилась в логах
+        throw new Error(userFacingError);
     }
 }
 
