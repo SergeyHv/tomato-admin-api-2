@@ -1,22 +1,20 @@
 {
-  "build": {
-    "includeFiles": [
-      "api/lib/**"
-    ]
-  },
-  "rewrites": [
-    { "source": "/api/sheets/list", "destination": "/api/sheets/list.cjs" },
-    { "source": "/api/sheets/:path", "destination": "/api/sheets/:path.cjs" },
-    { "source": "/api/:path", "destination": "/api/:path.cjs" }
-  ],
+  // 1. УДАЛЯЕМ БЛОК "build"
+  // 2. УДАЛЯЕМ ВСЕ REWRITES: Vercel автоматически перенаправит /api/list на api/list.cjs
+
+  // Устанавливаем CORS-заголовки для всех API-запросов
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Credentials", "value": "true" },
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version" }
+        // Это нам нужно для работы из браузера с фронтенда
+        { "key": "Access-Control-Allow-Origin", "value": "*" }, 
+        
+        // Методы, которые мы используем (GET, POST)
+        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, OPTIONS" }, 
+        
+        // Основные заголовки
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type" } 
       ]
     }
   ]
