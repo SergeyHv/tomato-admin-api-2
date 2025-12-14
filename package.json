@@ -1,21 +1,16 @@
 {
-  "name": "netlify-api-backend",
+  "name": "tomato-admin-api-2",
   "version": "1.0.0",
-  "description": "Dependencies for Netlify Functions",
+  "description": "Netlify Functions for Tomato Admin Panel",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "googleapis": "^129.0.0",
-    "formidable": "^3.5.1",
-    "node-fetch": "^3.3.2"
-  },
-  "keywords": [
-    "netlify",
-    "functions",
-    "google-sheets"
-  ],
-  "author": "",
-  "license": "ISC"
+    "busboy": "^1.6.0"  
+  }
 }
