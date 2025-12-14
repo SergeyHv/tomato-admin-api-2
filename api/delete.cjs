@@ -1,61 +1,48 @@
 // ===================================================================
-// Файл: netlify/functions/delete.cjs (ФОРМАТ NETLIFY FUNCTION)
+// Файл: api/delete.cjs (ФОРМАТ VERCEL FUNCTION)
 // ===================================================================
 
-// 1. Изменяем путь к googleClient
 const { getSheetsClient } = require("./googleClient.cjs"); 
 
-// --- Оборачиваем логику в exports.handler ---
-exports.handler = async (event, context) => {
+// Vercel требует, чтобы основной экспорт был функцией-обработчиком (req, res)
+module.exports = async (req, res) => {
     
-    // Заголовки для ответа (для CORS)
-    const headers = {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-    };
+    // --- Настройка CORS ---
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
     // --- Обработка Preflight-запроса (OPTIONS) ---
-    if (event.httpMethod === 'OPTIONS') {
-        return { 
-            statusCode: 200, 
-            headers 
-        };
+    if (req.method === 'OPTIONS') {
+        return res.status(200).send('ok');
     }
     
     // Проверка метода POST
-    if (event.httpMethod !== 'POST') {
-        return { 
-            statusCode: 405, 
-            headers,
-            body: JSON.stringify({ error: 'Method not allowed' }) 
-        };
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
     }
 
     try {
-        // 2. Получение и парсинг тела запроса из Netlify event.body
+        // 2. Получение и парсинг тела запроса
         let data;
         try {
-            data = JSON.parse(event.body);
+            data = req.body;
+            // Дополнительная проверка, если Vercel не распарсил тело автоматически
+            if (typeof data === 'string') {
+                data = JSON.parse(data);
+            }
         } catch (parseError) {
-            return {
-                statusCode: 400,
-                headers,
-                body: JSON.stringify({ error: "Invalid JSON body provided" })
-            };
+            return res.status(400).json({ error: "Invalid JSON body provided" });
         }
         
         const sheets = await getSheetsClient();
-        const spreadsheetId = "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo";
+        // Используем переменную среды, если она установлена, с запасным вариантом
+        const spreadsheetId = process.env.SPREADSHEET_ID || "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo";
         const sheetName = "_Tomato_Sait - Лист1";
-        const { id } = data; // Используем data вместо req.body
+        const { id } = data;
 
         if (!id) {
-            return { 
-                statusCode: 400, 
-                headers,
-                body: JSON.stringify({ error: "Требуется ID для удаления" }) 
-            };
+            return res.status(400).json({ error: "Требуется ID для удаления" });
         }
 
         // 1. Ищем строку, содержащую ID
@@ -65,21 +52,14 @@ exports.handler = async (event, context) => {
         });
 
         const rows = getRes.data.values || [];
-        // ВНИМАНИЕ: rowToDelete будет реальным индексом строки в таблице (начиная с 1), 
-        // если в rows[0] — заголовки, или найденным индексом в массиве, если мы ищем с первой строки.
-        // Ваш код предполагает, что rows[0] — это заголовок.
-        const rowIndex = rows.findIndex(row => row[0] === String(id));
+        // Находим индекс, начиная с 0 (включая заголовок)
+        const rowIndex = rows.findIndex(row => row && row[0] === String(id));
 
         if (rowIndex === -1) {
-            return { 
-                statusCode: 404, 
-                headers,
-                body: JSON.stringify({ error: `ID ${id} не найден` }) 
-            };
+            return res.status(404).json({ error: `ID ${id} не найден` });
         }
 
-        // Реальный индекс строки в Google Sheets для API - 
-        // Ваш код использует rowToDelete как индекс, начиная с 0, что корректно для batchUpdate.
+        // rowIndex - это индекс в массиве rows, который соответствует строке в таблице (0-based)
         const rowToDelete = rowIndex; 
         
         // 2. Получаем sheetId
@@ -87,11 +67,7 @@ exports.handler = async (event, context) => {
         const sheet = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
         
         if (!sheet) {
-            return { 
-                statusCode: 500, 
-                headers,
-                body: JSON.stringify({ error: `Лист с именем '${sheetName}' не найден.` }) 
-            };
+            return res.status(500).json({ error: `Лист с именем '${sheetName}' не найден.` });
         }
         
         const sheetId = sheet.properties.sheetId;
@@ -105,9 +81,7 @@ exports.handler = async (event, context) => {
                         range: {
                             sheetId: sheetId,
                             dimension: "ROWS",
-                            // startIndex и endIndex: rowToDelete — это индекс в массиве с учетом заголовка. 
-                            // Если rowIndex = 1 (вторая строка данных), то это строка 2 в таблице.
-                            // batchUpdate использует индексы, начинающиеся с 0, и включает startIndex, исключает endIndex.
+                            // startIndex и endIndex для Google Sheets API: 0-based, endIndex исключается.
                             startIndex: rowToDelete, 
                             endIndex: rowToDelete + 1 
                         }
@@ -116,19 +90,11 @@ exports.handler = async (event, context) => {
             }
         });
 
-        // 4. Возвращаем успешный ответ
-        return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({ success: true, deletedId: id })
-        };
+        // 4. Возвращаем успешный ответ Vercel
+        return res.status(200).json({ success: true, deletedId: id });
         
     } catch (error) {
         console.error('Ошибка в delete.cjs:', error);
-        return {
-            statusCode: 500,
-            headers,
-            body: JSON.stringify({ error: 'Server error deleting data: ' + error.message })
-        };
+        return res.status(500).json({ error: 'Server error deleting data: ' + error.message });
     }
 };
