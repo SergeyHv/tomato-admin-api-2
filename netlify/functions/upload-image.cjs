@@ -1,11 +1,9 @@
 // ===================================================================
-// Файл: netlify/functions/upload-image.cjs (ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ ДЛЯ NETLIFY)
+// Файл: netlify/functions/upload-image.cjs (ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ С BUSBOY)
 // ===================================================================
 
-// Используем 'formidable' для парсинга, но без записи на диск
-const { IncomingForm } = require("formidable"); 
-// Node.js встроенный модуль для работы с потоками
-const { PassThrough } = require('stream'); 
+// Используем Busboy для надежного парсинга в Serverless-среде
+const Busboy = require('busboy');
 
 // --- КОНСТАНТЫ РЕПОЗИТОРИЯ ---
 const GITHUB_OWNER = 'SergeyHv'; 
@@ -13,44 +11,66 @@ const GITHUB_REPO = 'tomato';
 const GITHUB_BRANCH = 'main';
 // --- КОНЕЦ КОНСТАНТ ---
 
-// 1. Упрощенные рабочие CORS-заголовки
+// Упрощенные рабочие CORS-заголовки
 const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*', // Разрешаем доступ с любого домена
+    'Access-Control-Allow-Origin': '*', 
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-// 2. Адаптация Formidable для Netlify (парсинг тела запроса в памяти)
-const parseForm = (event) => {
+// Функция парсинга тела запроса с Busboy
+const parseMultipartForm = (event) => {
     return new Promise((resolve, reject) => {
-        const form = new IncomingForm({
-            // Установка path/uploadDir не нужна, мы парсим в памяти
-            keepExtensions: true, 
-            multiples: false,
-            // Максимальный размер файла 5MB (лимит Lambda)
-            maxFileSize: 5 * 1024 * 1024 
+        
+        const contentType = event.headers['content-type'] || event.headers['Content-Type'];
+        if (!contentType || !contentType.includes('multipart/form-data')) {
+            return reject(new Error('Invalid Content-Type: Expected multipart/form-data'));
+        }
+
+        // Busboy требует доступа к headers, включая boundary
+        const busboy = Busboy.default({ headers: event.headers });
+        let fileData = null;
+        let fileName = null;
+        
+        // 1. Обработка файла
+        busboy.on('file', (fieldname, file, info) => {
+            if (fieldname !== 'file') return;
+            
+            const { filename } = info;
+            fileName = filename;
+
+            let buffer = Buffer.alloc(0);
+            file.on('data', (data) => {
+                buffer = Buffer.concat([buffer, data]);
+            });
+            file.on('end', () => {
+                fileData = buffer;
+            });
+            file.on('error', reject);
         });
 
-        const mockReq = { 
-            headers: event.headers, 
-            method: event.httpMethod
-        };
-        
-        // Создаем поток из тела запроса (event.body)
-        const body = event.isBase64Encoded 
+        // 2. Окончание парсинга
+        busboy.on('finish', () => {
+            if (fileData && fileName) {
+                resolve({ fileData, fileName });
+            } else {
+                reject(new Error('File data or filename is missing after parsing.'));
+            }
+        });
+
+        busboy.on('error', reject);
+
+        // 3. Запуск парсинга
+        // Декодируем event.body, если он в Base64
+        const bodyBuffer = event.isBase64Encoded 
             ? Buffer.from(event.body, 'base64') 
-            : event.body;
-
-        const bufferStream = new PassThrough();
-        bufferStream.end(body);
+            : Buffer.from(event.body);
         
-        // Передаем поток в Formidable
-        form.parse(bufferStream, (err, fields, files) => {
-            if (err) return reject(err);
-            resolve({ fields, files });
-        });
+        busboy.write(bodyBuffer);
+        busboy.end();
     });
 };
+
 
 exports.handler = async (event, context) => {
     
@@ -64,50 +84,33 @@ exports.handler = async (event, context) => {
     }
 
     try {
-        // 3. Проверка токена
+        // 1. Проверка токена
         const token = process.env.GH_UPLOAD_TOKEN;
         if (!token) {
             console.error("CRITICAL ERROR: Missing GH_UPLOAD_TOKEN environment variable.");
             throw new Error("Missing GH_UPLOAD_TOKEN");
         }
 
-        // 4. Парсинг данных
-        const { files } = await parseForm(event);
+        // 2. Парсинг данных с Busboy
+        const { fileData: buffer, fileName: originalName } = await parseMultipartForm(event);
 
-        // Формат файла в Formidable - объект с данными, а не путь к файлу
-        const file = Array.isArray(files.file) ? files.file[0] : files.file;
-        
-        if (!file || !file.originalFilename) {
-            return { statusCode: 400, headers: CORS_HEADERS, body: JSON.stringify({ error: "No file uploaded or file is corrupt." }) };
+        if (!buffer || buffer.length === 0) {
+            throw new Error("File buffer is empty after Busboy parsing.");
         }
         
-        // ВНИМАНИЕ: Для работы с файлами без fs, нам нужно, чтобы formidable
-        // сохранил данные файла в памяти (в объекте file.data), но для этого 
-        // часто нужна дополнительная настройка (например, использование busboy).
-        // Предполагаем, что file.data содержит буфер, если запись на диск не удалась.
-        // Если это не сработает, то нужно использовать 'busboy'.
-        
-        // 5. Временное решение: Чтение файла из буфера. 
-        // (Это сработает, только если formidable НЕ пытался записать файл на диск)
-        const buffer = file.buffer || file.data; 
-
-        if (!buffer) {
-             throw new Error("File buffer is missing. Formidable failed to parse file content.");
-        }
-
         const base64 = buffer.toString("base64");
-        const originalName = file.originalFilename;
         
-        // 6. Подготовка и загрузка на GitHub
+        // 3. Подготовка и загрузка на GitHub
         const fileName = `${Date.now()}-${originalName}`;
         const githubPath = `images/${fileName}`;
         const apiUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${githubPath}`;
 
-        // 7. Запрос к GitHub (используем fetch)
+        // 4. Запрос к GitHub
         const githubRes = await fetch(apiUrl, {
             method: "PUT",
             headers: {
                 "Content-Type": "application/json",
+                // Используем Bearer для современных токенов
                 "Authorization": `Bearer ${token}`, 
                 "User-Agent": "tomato-admin-api"
             },
@@ -122,10 +125,16 @@ exports.handler = async (event, context) => {
 
         if (!githubRes.ok) {
             console.error("GITHUB UPLOAD FAILED:", githubRes.status, githubData.message || githubData);
-            throw new Error(`GitHub upload failed: ${githubData.message || "Unknown error"}`);
+            
+            let githubErrorDetails = githubData.message || "Unknown GitHub error";
+            if (githubRes.status === 401 || githubRes.status === 403) {
+                 githubErrorDetails = `Authorization failed (${githubRes.status}). Check GH_UPLOAD_TOKEN permissions (repo scope) or ensure the token is valid.`;
+            }
+            
+            throw new Error(`GitHub upload failed: ${githubErrorDetails}`);
         }
         
-        // 8. Возврат URL
+        // 5. Возврат URL
         const rawUrl = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${GITHUB_REPO}/${GITHUB_BRANCH}/${githubPath}`;
 
         return {
