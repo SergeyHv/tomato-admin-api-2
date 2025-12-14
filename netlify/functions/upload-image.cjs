@@ -27,8 +27,8 @@ const parseMultipartForm = (event) => {
             return reject(new Error('Invalid Content-Type: Expected multipart/form-data'));
         }
 
-        // Busboy требует доступа к headers, включая boundary
-        const busboy = Busboy.default({ headers: event.headers });
+        // ИСПРАВЛЕНИЕ: Используем 'new Busboy', а не 'Busboy.default'
+        const busboy = new Busboy({ headers: event.headers }); 
         let fileData = null;
         let fileName = null;
         
