@@ -2,8 +2,8 @@
 // Файл: netlify/functions/upload-image.cjs (ФИНАЛЬНАЯ РАБОЧАЯ ВЕРСИЯ С BUSBOY)
 // ===================================================================
 
-// Используем Busboy для надежного парсинга в Serverless-среде
-const Busboy = require('busboy');
+// НОВАЯ СТРОКА: Правильный импорт busboy для CJS модулей
+const Busboy = require('busboy').Busboy;
 
 // --- КОНСТАНТЫ РЕПОЗИТОРИЯ ---
 const GITHUB_OWNER = 'SergeyHv'; 
