@@ -1,64 +1,56 @@
-// ===================================================================
-// Файл: api/add.cjs (ФОРМАТ VERCEL FUNCTION)
-// ===================================================================
-
-const { getSheetsClient } = require("./googleClient.cjs"); 
+const { getSheetsClient } = require("./googleClient.cjs");
 
 module.exports = async (req, res) => {
+  // --- CORS ---
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, admin-key, Authorization");
 
-    // --- CORS ---
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, admin-key');
+  if (req.method === "OPTIONS") return res.status(200).send("ok");
+  if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
-    // Preflight
-    if (req.method === 'OPTIONS') {
-        return res.status(200).send('ok');
-    }
+  if (req.headers["admin-key"] !== process.env.ADMIN_KEY) {
+    return res.status(403).json({ error: "Invalid admin key" });
+  }
 
-    // Проверка метода
-    if (req.method !== 'POST') {
-        return res.status(405).json({ error: 'Method not allowed' });
-    }
+  try {
+    const sheets = await getSheetsClient();
+    const spreadsheetId = process.env.SPREADSHEET_ID;
+    const sheetName = "_Tomato_Sait - Лист1";
 
-    try {
-        const sheets = await getSheetsClient();
+    const body = req.body;
 
-        const spreadsheetId = process.env.SPREADSHEET_ID || "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo";
-        const range = "'_Tomato_Sait - Лист1'!A:K";
+    const row = [
+      body.id || "",
+      body.name || "",
+      body.description || "",
+      body.mainphoto || "",
+      body.color || "",
+      body.type || "",
+      body.size || "",
+      body.season || "",
+      body.gallery_photos || "",
+      body.origin || "",
+      body.taste || "",
+      body.shape || "",
+      body.version || "",
+      body.isvisible || "",
+      body.isnew || "",
+      body.createdat || "",
+      body.updatedat || "",
+    ];
 
-        // Получение тела запроса
-        let data;
-        try {
-            data = req.body;
-            if (typeof data === 'string') {
-                data = JSON.parse(data);
-            }
-        } catch (parseError) {
-            return res.status(400).json({ error: "Invalid JSON body provided" });
-        }
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `'${sheetName}'!A:Z`,
+      valueInputOption: "RAW",
+      requestBody: { values: [row] },
+    });
 
-        const { id, name, description, mainphoto, color, type, size, season, gallery_photos, origin, version } = data;
+    return res.status(200).json({ success: true });
 
-        const values = [[
-            id, name, description, mainphoto, color, type, size, season, gallery_photos, origin, version
-        ]];
-
-        await sheets.spreadsheets.values.append({
-            spreadsheetId,
-            range,
-            valueInputOption: "USER_ENTERED",
-            requestBody: { values }
-        });
-
-        return res.status(200).json({ success: true });
-
-    } catch (error) {
-        console.error("Ошибка при записи в Google Sheets:", error);
-
-        return res.status(500).json({
-            error: 'Server error adding data',
-            details: error.message
-        });
-    }
+  } catch (err) {
+    console.error("add.cjs error:", err);
+    return res.status(500).json({ error: "Server error" });
+  }
 };
