@@ -11,7 +11,8 @@ module.exports = async (req, res) => {
 
   try {
     const sheets = await getSheetsClient();
-    const spreadsheetId = process.env.SPREADSHEET_ID;
+    const spreadsheetId = process.env.SPREADSHEET_ID || "1XFeUWj0H0ztlTIGZVSNMeumfsGjjKfGYHkPw3A1xdKo";
+
     const sheetName = "_Tomato_Sait - Лист1";
 
     const response = await sheets.spreadsheets.values.get({
